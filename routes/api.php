@@ -44,7 +44,7 @@ Route::group(['middleware' => ['auth:api']], function () {
 //     return "Message sent!";
 // });
 
-// Route::post('/login', [FirebaseAuthController::class, 'loginWithFirebase']);
+Route::post('/login', [AuthController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------
