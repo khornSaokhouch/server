@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BroadcastController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\Socialite\FirebaseAuthController;
 
 use App\Http\Controllers\User\UserController as UserUserController;
@@ -27,10 +29,20 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Login
 
+// Route::post('/send-message', [MessageController::class, 'sendMessage']);
 
-// Firebase login/logout
+/*
+|--------------------------------------------------------------------------
+| API Routes Login  Firebase login/logout
+|--------------------------------------------------------------------------
+*/
+
 Route::post('/firebase-login', [FirebaseAuthController::class, 'login']);
+// 2️⃣ Update phone after OTP verification
+Route::post('/update-phone', [FirebaseAuthController::class, 'updatePhone']);
+Route::post("/sign-up-by-phone",[FirebaseAuthController::class, 'signByPhone' ]);
 Route::post('/firebase-logout', [FirebaseAuthController::class, 'logout'])->middleware('auth:api');
+
 
 // Authenticated routes (require JWT token)
 Route::group(['middleware' => ['auth:api']], function () {
@@ -45,6 +57,8 @@ Route::group(['middleware' => ['auth:api']], function () {
 // });
 
 Route::post('/login', [AuthController::class, 'login']);
+
+
 
 /*
 |--------------------------------------------------------------------------
