@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewNotification;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -233,6 +234,7 @@ class AuthController extends Controller
     
             // ✅ Send Telegram notification
             sendTelegramMessage("🔵 User logged in: {$user->name} ({$field}: {$loginInput})");
+            // NewNotification::dispatch("Hello from Laravel! This is a test notification.");
     
             // ✅ Return success response
             return response()->json([
