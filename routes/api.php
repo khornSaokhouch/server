@@ -9,7 +9,11 @@ use App\Http\Controllers\User\UserController as UserUserController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use TelegramController as GlobalTelegramController;
-
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\shopController;
+use App\Http\Controllers\ItemController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CartItemController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -70,6 +74,49 @@ Route::middleware(['auth:api'])->prefix('admin/users')->group(function () {
     Route::get('/{id}', [UserUserController::class, 'show']);     // Show a specific user
     Route::put('/{id}', [UserUserController::class, 'update']);   // Update a user
     Route::delete('/{id}', [UserUserController::class, 'destroy']); // Delete a user
+});
+
+
+Route::middleware(['auth:api'])->prefix('admin/categories')->group(function () {
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::post('/', [CategoryController::class, 'store']);
+    Route::get('/{category}', [CategoryController::class, 'show']);
+    Route::put('/{category}', [CategoryController::class, 'update']);
+    Route::delete('/{category}', [CategoryController::class, 'destroy']);
+});
+Route::middleware(['auth:api'])->prefix('admin/shops')->group(function () {
+    Route::get('/', [shopController::class, 'index']);        // List all shops
+    Route::post('/', [shopController::class, 'store']);       // Create a new shop
+    Route::get('/{shop}', [shopController::class, 'show']); // Show a specific shop
+    Route::put('/{shop}', [shopController::class, 'update']); // Update a shop
+    Route::delete('/{shop}', [shopController::class, 'destroy']); // Delete a shop
+    Route::get('/nearby', [ShopController::class, 'nearby']);
+
+});
+
+
+
+Route::middleware(['auth:api'])->prefix('admin/items')->group(function () {
+    Route::get('/', [ItemController::class, 'index']);        // List all items
+    Route::post('/', [ItemController::class, 'store']);       // Create new item
+    Route::get('/{item}', [ItemController::class, 'show']);   // Show specific item
+    Route::post('/{item}', [ItemController::class, 'update']); // Update item
+    Route::delete('/{item}', [ItemController::class, 'destroy']); // Delete item
+});
+
+
+Route::middleware(['auth:api'])->prefix('admin/carts')->group(function () {
+    Route::get('/', [CartController::class, 'index']);        // List all carts
+    Route::post('/', [CartController::class, 'store']);       // Create new cart
+    Route::get('/{cart}', [CartController::class, 'show']);   // Show specific cart
+    Route::put('/{cart}', [CartController::class, 'update']); // Update cart
+    Route::delete('/{cart}', [CartController::class, 'destroy']); // Delete cart
+});
+
+Route::middleware(['auth:api'])->prefix('admin/cart-items')->group(function () {
+    Route::post('/', [CartItemController::class, 'store']);       // Add item to cart
+    Route::put('/{cartItem}', [CartItemController::class, 'update']); // Update cart item
+    Route::delete('/{cartItem}', [CartItemController::class, 'destroy']); // Delete cart item
 });
 
 

@@ -57,41 +57,17 @@ class UserController extends Controller
     public function index(Request $request)
     {
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $authUser = JWTAuth::parseToken()->authenticate();
     
-            if (!$user->isAdmin()) {
-                sendTelegramMessage("⚠️ Unauthorized access attempt by {$user->name} ({$user->profile_image})");
+            // Allow only 'admin' or 'owner' to view all users
+            if (!in_array($authUser->role, ['admin', 'owner'])) {
+                sendTelegramMessage("⚠️ Unauthorized access attempt by {$authUser->name} ({$authUser->email})");
                 return response()->json([
-                    'message' => 'Unauthorized. Only admin can access this resource.'
+                    'message' => 'Access Denied. Admins or Owners only.'
                 ], 403);
             }
     
             $users = User::all();
-    
-            // Prepare Telegram message with profile_image
-            $userList = $users->map(function($u, $index) {
-                $name = $u->name ?? 'N/A';
-                $email = $u->email ?? 'N/A';
-                $phone = $u->phone ?? 'N/A';
-                $role = $u->role ?? 'N/A';
-                $profileImage = $u->profile_image ?? 'N/A';
-                return ($index + 1) . ". Name: {$name}, Email: {$email}, Phone: {$phone}, Role: {$role}, Profile: {$profileImage}";
-            })->implode("\n");
-    
-            sendTelegramMessage("🟢 Admin {$user->name} retrieved all users at ".now().":\n{$userList}");
-    
-            // Include profile_image in JSON response
-            $users = $users->map(function($u) {
-                return [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'email' => $u->email,
-                    'phone' => $u->phone,
-                    'role' => $u->role,
-                    'profile_image' => $u->profile_image,
-                    'firebase_uid' => $u->firebase_uid,
-                ];
-            });
     
             return response()->json([
                 'message' => 'Users retrieved successfully',
@@ -100,11 +76,12 @@ class UserController extends Controller
     
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Something went wrong', 
+                'message' => 'Something went wrong',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+    
     
     /**
      * Create new user
@@ -279,9 +256,10 @@ class UserController extends Controller
             $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-                'phone' => 'sometimes|string|max:30|unique:users,phone,' . $user->id,
+               'phone' => 'nullable|string|max:30|unique:users,phone,' . $user->id,
                 'password' => 'nullable|string|min:8|confirmed',
                 'profile_image' => 'nullable|image|max:2048',
+                'role' => 'sometimes|string|in:admin,owner,customer',
             ]);
     
             $uploadApi = new UploadApi();
@@ -314,14 +292,16 @@ class UserController extends Controller
             }
     
             $user->name = $request->name ?? $user->name;
-            $user->email = $request->email ?? $user->email;
-            $user->phone = $request->phone ?? $user->phone;
-    
-            if ($request->filled('password')) {
-                $user->password = Hash::make($request->password);
-            }
-    
-            $user->save();
+$user->email = $request->email ?? $user->email;
+$user->phone = $request->phone ?? $user->phone;
+$user->role = $request->role ?? $user->role; // ✅ Add this line
+
+if ($request->filled('password')) {
+    $user->password = Hash::make($request->password);
+}
+
+$user->save();
+
             sendTelegramMessage("Update {$user->name} ({$user->profile_image})");
     
             return response()->json([
