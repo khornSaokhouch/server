@@ -10,14 +10,12 @@ class Item extends Model
     use HasFactory;
 
     protected $fillable = [
-        'shop_id',
         'category_id',
         'name',
         'description',
         'price_cents',
         'image_url',
         'is_available',
-        'display_order',
     ];
 
     /**
@@ -59,4 +57,11 @@ class Item extends Model
             $this->attributes['image_url'] = $value;
         }
     }
+
+    public function optionGroups()
+    {
+        return $this->belongsToMany(ItemOptionGroup::class, 'item_item_option_group')
+                    ->withTimestamps(); // ✅ ensures pivot timestamps are filled
+    }
+
 }
