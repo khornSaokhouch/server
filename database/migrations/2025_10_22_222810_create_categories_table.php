@@ -10,16 +10,10 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('shop_id');
-            $table->string('name', 100);
-            $table->integer('display_order')->default(0);
+            $table->string('name', 100)->unique(); // ✅ unique name
+            $table->tinyInteger('status')->default(1)->comment('1 = active, 0 = inactive');
+            $table->string('image_category')->nullable(); // store image path
             $table->timestamps();
-
-            // Composite index
-            $table->index(['shop_id', 'display_order'], 'idx_categories_shop_order');
-
-            // Optional foreign key constraint
-            // $table->foreign('shop_id')->references('id')->on('shops')->onDelete('cascade');
         });
     }
 

@@ -12,8 +12,16 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('name', 150);
             $table->string('location', 255)->nullable();
-            $table->enum('status', ['active', 'inactive']);
+            // ✅ status as 1 = active, 0 = inactive
+            $table->tinyInteger('status')->default(1)->comment('1 = active, 0 = inactive');
             $table->unsignedBigInteger('owner_user_id');
+
+            // Working hours
+            $table->time('open_time')->nullable();   // e.g., "08:00:00"
+            $table->time('close_time')->nullable();  // e.g., "18:00:00"
+            // 👇 Shop image column
+            $table->string('image')->nullable(); // store image path or URL
+
             $table->timestamps();
 
             // Index

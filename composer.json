@@ -9,6 +9,7 @@
         "php": "^8.2",
         "cloudinary-labs/cloudinary-laravel": "^3.0",
         "darkaonline/l5-swagger": "^9.0",
+        "intervention/image": "^3.11",
         "irazasyed/telegram-bot-sdk": "^3.15",
         "kreait/firebase-php": "^7.10",
         "kreait/firebase-tokens": "^4.3",

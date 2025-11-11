@@ -11,10 +11,9 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
-        'shop_id',
         'name',
         'image_category',
-        'display_order',
+        'status',
     ];
 
     // Add this accessor
@@ -25,6 +24,8 @@ class Category extends Model
         return $this->belongsTo(Shop::class);
     }
 
+    
+
     // Accessor to return full URL
     public function getImageCategoryUrlAttribute()
     {
@@ -33,5 +34,10 @@ class Category extends Model
             return asset('storage/' . $this->image_category);
         }
         return null;
+    }
+
+    public function itemOwners()
+    {
+        return $this->hasMany(\App\Models\ItemOwner::class, 'category_id');
     }
 }

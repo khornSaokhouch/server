@@ -11,7 +11,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Validation\ValidationException;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Cloudinary\Api\Upload\UploadApi;
-
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @OA\Tag(
@@ -22,6 +22,10 @@ use Cloudinary\Api\Upload\UploadApi;
 
 class UserController extends Controller
 {
+
+
+
+
     /**
      * List all users
      */
@@ -199,6 +203,7 @@ class UserController extends Controller
             if (!$user) {
                 return response()->json(['message' => 'User not found or invalid token'], 404);
             }
+    
 
             return response()->json([
                 'message' => 'User retrieved successfully',
@@ -245,82 +250,69 @@ class UserController extends Controller
      *     @OA\Response(response=422, description="Validation error")
      * )
      */ 
-    public function update(Request $request, $id)
-    {
-        try {
-            $user = User::find($id);
-            if (!$user) {
-                return response()->json(['message' => 'User not found'], 404);
-            }
-    
-            $request->validate([
-                'name' => 'sometimes|string|max:255',
-                'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-               'phone' => 'nullable|string|max:30|unique:users,phone,' . $user->id,
-                'password' => 'nullable|string|min:8|confirmed',
-                'profile_image' => 'nullable|image|max:2048',
-                'role' => 'sometimes|string|in:admin,owner,customer',
-            ]);
-    
-            $uploadApi = new UploadApi();
-    
-            if ($request->hasFile('profile_image')) {
-                $file = $request->file('profile_image');
-    
-                // Delete old image if exists
-                if ($user->profile_image) {
-                    $parsedUrl = parse_url($user->profile_image, PHP_URL_PATH);
-                    $pathParts = explode('/', ltrim($parsedUrl, '/'));
-                    $publicIdWithExtension = end($pathParts);
-                    $publicId = pathinfo($publicIdWithExtension, PATHINFO_FILENAME);
-    
-                    try {
-                        $uploadApi->destroy('users/profile_images/' . $publicId);
-                    } catch (\Exception $e) {
-                        // ignore if not found
-                    }
-                }
-    
-                // Upload new image
-                $uploadedFile = $uploadApi->upload($file->getRealPath(), [
-                    'folder' => 'users/profile_images',
-                    'public_id' => Str::random(12),
-                    'overwrite' => true,
-                ]);
-    
-                $user->profile_image = $uploadedFile['secure_url'];
-            }
-    
-            $user->name = $request->name ?? $user->name;
-$user->email = $request->email ?? $user->email;
-$user->phone = $request->phone ?? $user->phone;
-$user->role = $request->role ?? $user->role; // ✅ Add this line
 
-if ($request->filled('password')) {
-    $user->password = Hash::make($request->password);
-}
-
-$user->save();
-
-            sendTelegramMessage("Update {$user->name} ({$user->profile_image})");
-    
-            return response()->json([
-                'message' => 'User updated successfully',
-                'user' => $user,
-            ]);
-    
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
+     public function update(Request $request, $id)
+     {
+         set_time_limit(300);
+     
+         try {
+             $user = User::findOrFail($id);
+     
+             $request->validate([
+                 'name' => 'sometimes|string|max:255',
+                 'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+                 'phone' => 'nullable|string|max:30|unique:users,phone,' . $user->id,
+                 'password' => 'nullable|string|min:8|confirmed',
+                 'profile_image' => 'nullable|image|max:2048',
+             ]);
+     
+             // Handle image upload to LOCAL STORAGE
+             if ($request->hasFile('profile_image')) {
+                 $file = $request->file('profile_image');
+     
+                 // Delete previous stored image
+                 if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
+                     Storage::disk('public')->delete($user->profile_image);
+                 }
+     
+                 // Save new image in storage/app/public/users/profile_images/
+                 $path = $file->store('users/profile_images', 'public');
+     
+                 // Save file path into database (not full URL)
+                 $user->profile_image = $path;
+             }
+     
+             // Update other fields
+             $user->name = $request->name ?? $user->name;
+             $user->email = $request->email ?? $user->email;
+             $user->phone = $request->phone ?? $user->phone;
+     
+             if ($request->filled('password')) {
+                 $user->password = Hash::make($request->password);
+             }
+     
+             $user->save();
+     
+             sendTelegramMessage("Update {$user->name} ({$user->profile_image})");
+     
+             return response()->json([
+                 'message' => 'User updated successfully',
+                 'user' => $user,
+             ]);
+     
+         } catch (ValidationException $e) {
+             return response()->json([
+                 'message' => $e->getMessage(),
+                 'errors' => $e->errors(),
+             ], 422);
+         } catch (\Exception $e) {
+             return response()->json([
+                 'message' => 'Something went wrong',
+                 'error' => $e->getMessage(),
+             ], 500);
+         }
+     }
+     
     
     /**
      * Delete user
@@ -343,59 +335,51 @@ $user->save();
      *     @OA\Response(response=404, description="User not found")
      * )
      */
-    public function destroy($id)
-    {
-    try {
-        $authUser = JWTAuth::parseToken()->authenticate();
-
-        // Check if authenticated user is admin
-        if (!$authUser->isAdmin()) {
-            sendTelegramMessage("⚠️ Unauthorized delete attempt by {$authUser->name} ({$authUser->email})");
-            return response()->json([
-                'message' => 'Unauthorized. Only admin can delete users.'
-            ], 403);
-        }
-
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
-        // Delete profile image from Cloudinary if it exists
-        if ($user->profile_image) {
-            $uploadApi = new UploadApi();
-            $parsedUrl = parse_url($user->profile_image, PHP_URL_PATH);
-            $pathParts = explode('/', ltrim($parsedUrl, '/'));
-            $publicIdWithExtension = end($pathParts);
-            $publicId = pathinfo($publicIdWithExtension, PATHINFO_FILENAME);
-
-            try {
-                $uploadApi->destroy('users/profile_images/' . $publicId);
-            } catch (\Exception $e) {
-                // Ignore if image not found or already deleted
-            }
-        }
-
-        // Delete the user from database
-        $user->delete();
-
-        return response()->json([
-            'message' => 'User and profile image deleted successfully'
-        ]);
-
-    } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
-        return response()->json(['message' => 'JWT token expired'], 401);
-    } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
-        return response()->json(['message' => 'Invalid JWT token'], 401);
-    } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-        return response()->json(['message' => 'Token not provided'], 401);
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Something went wrong',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-    }
+    
+     public function destroy($id)
+     {
+         try {
+             $authUser = JWTAuth::parseToken()->authenticate();
+     
+             // Check if authenticated user is admin
+             if (!$authUser->isAdmin()) {
+                 sendTelegramMessage("⚠️ Unauthorized delete attempt by {$authUser->name} ({$authUser->email})");
+                 return response()->json([
+                     'message' => 'Unauthorized. Only admin can delete users.'
+                 ], 403);
+             }
+     
+             $user = User::find($id);
+             if (!$user) {
+                 return response()->json(['message' => 'User not found'], 404);
+             }
+     
+             // ✅ Delete user profile image from LOCAL storage
+             if ($user->profile_image && Storage::disk('public')->exists($user->profile_image)) {
+                 Storage::disk('public')->delete($user->profile_image);
+             }
+     
+             // Delete the user from database
+             $user->delete();
+     
+             return response()->json([
+                 'message' => 'User and profile image deleted successfully'
+             ]);
+     
+         } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+             return response()->json(['message' => 'JWT token expired'], 401);
+         } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+             return response()->json(['message' => 'Invalid JWT token'], 401);
+         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+             return response()->json(['message' => 'Token not provided'], 401);
+         } catch (\Exception $e) {
+             return response()->json([
+                 'message' => 'Something went wrong',
+                 'error' => $e->getMessage(),
+             ], 500);
+         }
+     }
+     
 
     public function getByphonenumber(Request $request, $id){
           

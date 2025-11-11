@@ -23,7 +23,7 @@ class User extends Authenticatable implements JWTSubject
         'role',
         'profile_image', // ✅ optional: for Firebase/Google photo
     ];
-
+    protected $appends = ['image_url']; // 👈 automatically included in JSON
     /**
      * The attributes that should be hidden for arrays.
      */
@@ -58,12 +58,18 @@ class User extends Authenticatable implements JWTSubject
     /**
      * Role check helpers.
      */
+       /**
+     * Check if the user is an owner.
+     *
+     * @return bool
+     */
+
     public function isAdmin()
     {
         return $this->role === 'admin';
     }
 
-    public function isOwner()
+    public function isOwner(): bool
     {
         return $this->role === 'owner';
     }
@@ -72,4 +78,24 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->role === 'customer';
     }
+
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+    
+    public function shops()
+    {
+        return $this->hasMany(Shop::class, 'owner_user_id');
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->profile_image) {
+            return asset('storage/' . $this->profile_image);
+        }
+        return null;
+    }
+    
+
 }
