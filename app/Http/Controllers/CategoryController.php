@@ -12,7 +12,8 @@ class CategoryController extends Controller
 {
     /**
      * Display a listing of the categories.
-     */public function index()
+     */
+    public function index()
     {
         $user = Auth::user();
 

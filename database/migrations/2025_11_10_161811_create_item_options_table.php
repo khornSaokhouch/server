@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('item_option_group_id')->constrained('item_option_groups')->onDelete('cascade');
             $table->string('name', length: 100); // e.g. "Normal", "Less", "Extra"
-            $table->integer('price_adjust_cents')->default(0);
+            $table->decimal('price_adjust_cents', 8, 2)->default(0);
             $table->timestamps();
         });
     }

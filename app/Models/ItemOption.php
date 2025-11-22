@@ -19,8 +19,20 @@ class ItemOption extends Model
     /**
      * Relationship: Option belongs to a group
      */
+    protected $appends = ['icon_url']; // Automatically include in JSON
     public function group()
     {
         return $this->belongsTo(ItemOptionGroup::class, 'item_option_group_id');
     }
+    public function shopOptionStatuses()
+{
+    return $this->hasMany(ShopItemOptionStatus::class, 'item_option_id', 'id');
+}
+public function getIconUrlAttribute()
+{
+    if ($this->icon) {
+        return url('storage/' . $this->icon);
+    }
+    return null;
+}
 }

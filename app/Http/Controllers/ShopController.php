@@ -83,7 +83,7 @@ class ShopController extends Controller
              // Store only relative path in DB
              $validated['image'] = $filePath;
          }
-     
+    
          // Default status to 1 (active) if not provided
          if (!isset($validated['status'])) {
              $validated['status'] = 1;
@@ -232,5 +232,50 @@ class ShopController extends Controller
             Storage::disk('public')->delete($path);
         }
     }
+
+
+    /**
+     * Display shops owned by the authenticated user.
+     */
+    public function showByOwner()
+    {
+        try {
+            // ✅ Get the currently logged-in user
+            $user = Auth::user();
+    
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Unauthorized access. Please log in.',
+                ], 401);
+            }
+    
+            // ✅ Fetch the shop(s) that belong to the authenticated owner
+            $shops = Shop::with('owner')
+                ->where('owner_user_id', $user->id)
+                ->get();
+    
+            // ✅ If no shops found
+            if ($shops->isEmpty()) {
+                return response()->json([
+                    'message' => 'No shops found for your account.',
+                ], 404);
+            }
+    
+            // ✅ Success
+            return response()->json([
+                'message' => 'Your shops fetched successfully.',
+                'data' => $shops,
+            ], 200);
+    
+        } catch (\Exception $e) {
+            // ✅ Handle server/database errors
+            return response()->json([
+                'message' => 'Service unavailable, please try again later.',
+                'error' => $e->getMessage(),
+            ], 503);
+        }
+    }
+    
+
 
 }

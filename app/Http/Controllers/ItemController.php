@@ -16,23 +16,50 @@ class ItemController extends Controller
      */
     public function index()
     {
-        // Fetch items where is_available = 1 and category status = 1
-        $items = Item::with(['shop', 'category'])
+        // Fetch items that are available and belong to active categories
+        $items = Item::with('category')
             ->where('is_available', 1)
             ->whereHas('category', function ($query) {
                 $query->where('status', 1);
             })
             ->get();
-    
+
+        // Group items by category
+        $grouped = $items->groupBy(function($item) {
+            return $item->category->id;
+        })->map(function($items, $categoryId) {
+            $category = $items->first()->category; // get category from first item
+            return [
+                'category' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'image_url' => $category->image_category_url ?? null,
+                    'description' => $category->description,
+                    'status' => $category->status,
+                ],
+                'items' => $items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'price' => $item->price,
+                        'image_url' => $item->image_url,
+                        // add more fields if needed
+                    ];
+                })->values()
+            ];
+        })->values();
+
         return response()->json([
             'message' => 'Items retrieved successfully',
-            'data' => $items
+            'data' => $grouped
         ], 200);
     }
+
     
     /**
      * Store a new item
-     */public function store(Request $request)
+     */
+    public function store(Request $request)
 {
     // 1️⃣ Simulate admin check (change role to test)
     $user = $request->user(); // Authenticated user
@@ -47,7 +74,7 @@ class ItemController extends Controller
         'category_id' => 'required|integer|exists:categories,id',
         'name' => 'required|string|max:150',
         'description' => 'nullable|string',
-        'price_cents' => 'required|integer|min:0',
+        'price_cents' => 'required|numeric|min:0',
         'image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
         'is_available' => 'required|in:0,1',
     ]);

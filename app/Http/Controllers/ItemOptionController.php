@@ -32,7 +32,7 @@ class ItemOptionController extends Controller
         $validated = $request->validate([
             'item_option_group_id' => 'required|exists:item_option_groups,id',
             'name' => 'required|string|max:100',
-            'price_adjust_cents' => 'integer|min:0',
+            'price_adjust_cents' => 'numeric|min:0',
             'icon' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
@@ -81,7 +81,7 @@ class ItemOptionController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:100',
-            'price_adjust_cents' => 'sometimes|integer|min:0',
+            'price_adjust_cents' => 'sometimes|numeric|min:0',
             'icon' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 

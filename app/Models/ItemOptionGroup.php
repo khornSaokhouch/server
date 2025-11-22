@@ -26,15 +26,19 @@ class ItemOptionGroup extends Model
     /**
      * Relationship: An option group has many options
      */
-    public function options()
-    {
-        return $this->hasMany(ItemOption::class);
-    }
+    // public function options()
+    // {
+    //     return $this->hasMany(ItemOption::class);
+    // }
 
 
     public function items()
 {
     return $this->belongsToMany(Item::class, 'item_item_option_group');
 }
+public function options()
+    {
+        return $this->hasMany(ItemOption::class, 'item_option_group_id');
+    }
 
 }
