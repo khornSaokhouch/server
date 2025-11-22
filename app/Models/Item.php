@@ -60,8 +60,16 @@ class Item extends Model
 
     public function optionGroups()
     {
-        return $this->belongsToMany(ItemOptionGroup::class, 'item_item_option_group')
-                    ->withTimestamps(); // ✅ ensures pivot timestamps are filled
+        return $this->belongsToMany(
+            ItemOptionGroup::class,     // Related model
+            'item_item_option_group',   // Pivot table
+            'item_id',                  // Foreign key on pivot for this model
+            'item_option_group_id'      // Foreign key on pivot for related model
+        )
+        ->with('options')              // Eager load the options for each group
+        ->withTimestamps();            // Optional: include pivot timestamps
     }
+    
+
 
 }

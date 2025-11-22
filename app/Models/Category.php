@@ -40,4 +40,11 @@ class Category extends Model
     {
         return $this->hasMany(\App\Models\ItemOwner::class, 'category_id');
     }
+    public function shops()
+{
+    return $this->belongsToMany(Shop::class, 'category_shop')
+                ->withPivot('status')
+                ->withTimestamps();
+}
+
 }

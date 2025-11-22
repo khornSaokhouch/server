@@ -233,7 +233,7 @@ class AuthController extends Controller
             $user->save();
     
             // ✅ Send Telegram notification
-            sendTelegramMessage("🔵 User logged in: {$user->name} ({$field}: {$loginInput})");
+            // sendTelegramMessage("🔵 User logged in: {$user->name} ({$field}: {$loginInput})");
             // NewNotification::dispatch("Hello from Laravel! This is a test notification.");
     
             // ✅ Return success response

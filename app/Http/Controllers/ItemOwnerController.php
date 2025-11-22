@@ -6,33 +6,45 @@ use App\Models\Category;
 use App\Models\ItemOwner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ItemOwnerController extends Controller
 {
     /**
      * List all items for a given owner or category
      */
-    public function index(Request $request)
-    {
-        $query = ItemOwner::with(['item', 'category', 'shop'])
-            ->where('inactive', 1); // only show active items
-    
-        if ($request->shop_id) {
-            $query->where('shop_id', $request->shop_id);
-        }
-    
-        if ($request->category_id) {
-            $query->where('category_id', $request->category_id);
-        }
-    
-        $items = $query->get();
-    
-        return response()->json([
-            'message' => 'Items retrieved successfully',
-            'data' => $items
-        ], 200);
+
+public function index(Request $request)
+{
+    $query = ItemOwner::with(['item', 'category', 'shop'])
+        ->where('inactive', 1); // only active ItemOwners
+
+    if ($request->shop_id) {
+        $query->where('shop_id', $request->shop_id);
     }
-    
+
+    if ($request->category_id) {
+        $query->where('category_id', $request->category_id);
+    }
+    // ✅ Only include items whose category is active AND category_shop pivot is active
+    $query->whereHas('category', function ($q) {
+        $q->where('status', 1); // category must be active
+    })
+    ->whereExists(function ($q) {
+        $q->select(DB::raw(1))
+          ->from('category_shop')
+          ->whereColumn('category_shop.shop_id', 'item_owners.shop_id')
+          ->whereColumn('category_shop.category_id', 'item_owners.category_id')
+          ->where('category_shop.status', 1); // pivot must be active
+    });
+    $items = $query->get();
+
+    return response()->json([
+        'message' => 'Items retrieved successfully',
+        'data' => $items
+    ], 200);
+}
+
 
     /**
      * Store a new item owner record
@@ -56,8 +68,21 @@ class ItemOwnerController extends Controller
     
         foreach ($validatedData as $data) {
             $data['inactive'] = $data['inactive'] ?? 1;
+    
+            // ✅ Check if category is attached & active for this shop
+            $categoryShop = DB::table('category_shop')
+                ->where('shop_id', $data['shop_id'])
+                ->where('category_id', $data['category_id'])
+                ->where('status', 1) // must be active
+                ->first();
+    
+            if (!$categoryShop) {
+                return response()->json([
+                    'message' => "Cannot attach item: Category {$data['category_id']} is not active for Shop {$data['shop_id']}"
+                ], 400);
+            }
+    
             $itemOwner = ItemOwner::create($data);
-            // $itemOwner->load(['item', 'shop', 'category']);
             $createdItems[] = $itemOwner;
         }
     
@@ -67,31 +92,34 @@ class ItemOwnerController extends Controller
         ], 201);
     }
     
+    
     /**
      * Update inactive status
      */
     public function updateStatus(Request $request, $id)
     {
         $itemOwner = ItemOwner::find($id);
-
+    
         if (!$itemOwner) {
             return response()->json([
                 'error' => 'ItemOwner not found'
             ], 404);
         }
-
-        $request->validate([
-            'inactive' => 'required|boolean'
+    
+        $validated = $request->validate([
+            'inactive' => 'required|boolean' // require field for update
         ]);
-
-        $itemOwner->inactive = $request->inactive;
+    
+        // Cast to integer 0/1 to match DB
+        $itemOwner->inactive = (int) $validated['inactive'];
         $itemOwner->save();
-
+    
         return response()->json([
             'message' => 'Status updated successfully',
             'data' => $itemOwner
         ], 200);
     }
+    
 
     /**
      * Delete a record
@@ -133,13 +161,18 @@ class ItemOwnerController extends Controller
 
 public function categoriesByOwner($shop_id)
 {
-    // Get categories for items that belong to this owner and are active,
-    // and only categories with status != 0
     $categories = Category::whereHas('itemOwners', function ($query) use ($shop_id) {
             $query->where('shop_id', $shop_id)
                   ->where('inactive', 1); // only active items
         })
-        ->where('status', '!=', 0) // exclude categories with status = 0
+        ->where('status', 1) // category itself must be active
+        ->whereExists(function ($q) use ($shop_id) {
+            $q->select(DB::raw(1))
+              ->from('category_shop')
+              ->whereColumn('category_shop.category_id', 'categories.id')
+              ->where('category_shop.shop_id', $shop_id)
+              ->where('category_shop.status', 1); // only active in pivot
+        })
         ->get();
 
     return response()->json([
@@ -148,16 +181,24 @@ public function categoriesByOwner($shop_id)
     ], 200);
 }
 
+
 public function itemsByOwnerAndCategory($shop_id)
 {
-    $items = ItemOwner::with(['item', 'category', 'shop']) // eager load relationships
+    $items = ItemOwner::with(['item', 'category', 'shop'])
         ->where('shop_id', $shop_id)
         ->where('inactive', 1) // only active items
         ->whereHas('category', function ($query) {
-            $query->where('status', 1); // only categories with status = 1
+            $query->where('status', 1); // only active categories
         })
         ->whereHas('item', function ($query) {
-            $query->where('is_available', 1); // only items that are available
+            $query->where('is_available', 1); // only available items
+        })
+        ->whereExists(function ($q) use ($shop_id) {
+            $q->select(DB::raw(1))
+              ->from('category_shop')
+              ->whereColumn('category_shop.category_id', 'item_owners.category_id')
+              ->whereColumn('category_shop.shop_id', 'item_owners.shop_id')
+              ->where('category_shop.status', 1); // only active in pivot
         })
         ->get()
         ->map(function ($itemOwner) {
@@ -181,12 +222,42 @@ public function itemsByOwnerAndCategory($shop_id)
                 ],
             ];
         });
-    
+
     return response()->json([
         'message' => 'Items retrieved successfully',
         'data' => $items
     ], 200);
 }
+public function itemsByShopAndCategory(Request $request)
+{
+    $shop_id     = $request->shop_id;
+    $category_id = $request->category_id;
 
+    $items = ItemOwner::with(['item', 'category', 'shop'])
+
+        ->where('shop_id', $shop_id)
+        ->where('category_id', $category_id)
+
+        // category must be active
+        ->whereHas('category', fn($q) => 
+            $q->where('status', 1)
+        )
+
+        // category_shop pivot must be active
+        ->whereExists(function ($q) {
+            $q->select(DB::raw(1))
+              ->from('category_shop')
+              ->whereColumn('category_shop.shop_id', 'item_owners.shop_id')
+              ->whereColumn('category_shop.category_id', 'item_owners.category_id')
+              ->where('category_shop.status', 1);
+        })
+
+        ->get();
+
+    return response()->json([
+        'message' => 'Items retrieved successfully',
+        'data'    => $items
+    ], 200);
+}
 
 }

@@ -45,11 +45,25 @@ class ItemOptionGroupAssignmentController extends Controller
 
     /**
  * Show assigned option groups for a specific item
- */public function show($itemId)
+ */
+public function show(Request $request, $itemId)
 {
-    $item = Item::with(['optionGroups.options' => function ($query) {
-        $query->where('is_active', 1); // only active options
+    $shopId = $request->query('shop_id'); // Make sure shop_id is passed
+
+    $item = Item::with(['optionGroups.options' => function ($q) use ($shopId) {
+        $q->where('is_active', 1)
+          ->when($shopId, function ($q2) use ($shopId) {
+              $q2->whereHas('shopOptionStatuses', function ($q3) use ($shopId) {
+                  $q3->where('shop_id', $shopId)
+                     ->where('status', 1);
+              });
+          });
     }])->findOrFail($itemId);
+
+    // Remove option groups that have no options left
+    $item->optionGroups = $item->optionGroups->filter(function ($group) {
+        return $group->options->isNotEmpty();
+    })->values();
 
     // Convert icon paths to full URLs
     $item->optionGroups->transform(function ($group) {
@@ -64,7 +78,6 @@ class ItemOptionGroupAssignmentController extends Controller
 
     return response()->json($item);
 }
-
 
 
     /**

@@ -25,7 +25,9 @@ class Shop extends Model
 
     public function categories()
     {
-        return $this->hasMany(Category::class);
+        return $this->belongsToMany(Category::class, 'category_shop')
+                ->withPivot('status')
+                ->withTimestamps();
     }
     public function owner()
     {
@@ -45,5 +47,7 @@ class Shop extends Model
         }
         return null;
     }
+
+    
 
 }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->string('name', 150);
             $table->text('description')->nullable();
-            $table->integer('price_cents'); // store price as integer cents
+            $table->decimal('price_cents', 8, 2); // 8 total digits, 2 after decimal
             $table->string('image_url', 255)->nullable();
             $table->tinyInteger('is_available')->default(1)->comment('1 = available, 0 = unavailable');
             $table->timestamps(); // created_at and updated_at

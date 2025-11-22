@@ -91,11 +91,21 @@ class User extends Authenticatable implements JWTSubject
 
     public function getImageUrlAttribute()
     {
-        if ($this->profile_image) {
-            return asset('storage/' . $this->profile_image);
+        $image = $this->profile_image;
+    
+        if (!$image) {
+            return null;
         }
-        return null;
+    
+        // If image is already an external URL (Google / Facebook / Apple)
+        if (filter_var($image, FILTER_VALIDATE_URL)) {
+            return $image;
+        }
+    
+        // Otherwise assume it's stored locally
+        return asset('storage/' . $image);
     }
+    
     
 
 }

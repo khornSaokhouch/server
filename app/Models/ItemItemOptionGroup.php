@@ -28,5 +28,9 @@ class ItemItemOptionGroup extends Model
         return $this->belongsToMany(Item::class, 'item_item_option_group')
                     ->withTimestamps(); // optional, if you need pivot timestamps here
     }
+    public function options()
+{
+    return $this->hasMany(ItemOption::class, 'item_option_group_id', 'id');
+}
     
 }
