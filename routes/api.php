@@ -230,6 +230,12 @@ Route::prefix('shops')->middleware('throttle:api')->group(function () {
     Route::get('/', [ShopController::class, 'index']);
     Route::get('/nearby', [ShopController::class, 'nearby']);
     Route::get('/{shop_id}/items', [ItemOwnerController::class, 'itemsByOwnerAndCategory']);
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']);
     Route::get('/{shop}', [ShopController::class, 'show']);
+
     Route::get('/shop-item/{itemId}/shopId/{shopId}', [ShopItemOptionStatusController::class, 'showByItem']);
+
+    
+    // Route::get('/categories/{category}', [CategoryController::class, 'show']);
 });

@@ -62,3 +62,5 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 php artisan l5-swagger:generate
 php artisan serve --host=0.0.0.0 --port=8000   
+
+php -S 0.0.0.0:8000 -t public
