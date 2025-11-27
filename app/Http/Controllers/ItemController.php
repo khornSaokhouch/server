@@ -18,7 +18,6 @@ class ItemController extends Controller
     {
         // Fetch items that are available and belong to active categories
         $items = Item::with('category')
-            ->where('is_available', 1)
             ->whereHas('category', function ($query) {
                 $query->where('status', 1);
             })
@@ -41,7 +40,9 @@ class ItemController extends Controller
                     return [
                         'id' => $item->id,
                         'name' => $item->name,
-                        'price' => $item->price,
+                        'price' => $item->price_cents,
+                        'description' => $item->description,
+                        'is_available' => $item->is_available,
                         'image_url' => $item->image_url,
                         // add more fields if needed
                     ];
@@ -150,7 +151,7 @@ class ItemController extends Controller
         }
     
         // 2️⃣ Get all items in this category that are available
-        $items = Item::with(['shop', 'category'])
+        $items = Item::with(['shop'])
             ->where('category_id', $categoryId)
             ->where('is_available', 1)
             ->get();
@@ -189,7 +190,7 @@ class ItemController extends Controller
             'description' => 'nullable|string',
             'price_cents' => 'sometimes|integer|min:0',
             'image_url' => 'nullable|image|max:2048',
-            'is_available' => 'required|in:0,1',
+            'is_available' => 'sometimes|in:0,1',
         ]);
 
         // Check category status if category_id is provided
