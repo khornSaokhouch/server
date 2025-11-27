@@ -103,7 +103,7 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('admin')->group(function
         Route::post('/', [ItemController::class, 'store']);
         Route::get('/{id}', [ItemController::class, 'show']);
         Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']);
-        Route::post('/{item}', [ItemController::class, 'update']);
+        Route::put('/{item}', [ItemController::class, 'update']);
         Route::delete('/{item}', [ItemController::class, 'destroy']);
     });
 
@@ -176,7 +176,8 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
 
     // Shop Items Management
     Route::prefix('/items')->group(function () {
-        Route::get('/', [ItemOwnerController::class, 'index']);                  // List all items for owner
+        Route::get('/', [ItemOwnerController::class, 'index']);   
+        Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']);               // List all items for owner
         Route::post('/', [ItemOwnerController::class, 'store']);    
         Route::patch('/{itemId}/status', [ItemOwnerController::class, 'updateStatus']);    // Update item status
         Route::delete('/{itemId}', [ItemOwnerController::class, 'destroy']);                     // Delete item             // Create new item

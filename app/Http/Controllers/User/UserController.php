@@ -264,6 +264,7 @@ class UserController extends Controller
                  'phone' => 'nullable|string|max:30|unique:users,phone,' . $user->id,
                  'password' => 'nullable|string|min:8|confirmed',
                  'profile_image' => 'nullable|image|max:2048',
+                 'role' => 'sometimes|string|in:customer,owner,admin',
              ]);
      
              // Handle image upload to LOCAL STORAGE
@@ -286,6 +287,7 @@ class UserController extends Controller
              $user->name = $request->name ?? $user->name;
              $user->email = $request->email ?? $user->email;
              $user->phone = $request->phone ?? $user->phone;
+             $user->role = $request->role ?? $user->role;
      
              if ($request->filled('password')) {
                  $user->password = Hash::make($request->password);

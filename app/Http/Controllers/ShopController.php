@@ -52,12 +52,8 @@ class ShopController extends Controller
 
      public function store(Request $request)
      {
-         $user = Auth::user();
-         if (!$user) {
-             return response()->json(['message' => 'Unauthorized'], 401);
-         }
-     
          $validated = $request->validate([
+             'owner_user_id' => 'nullable|exists:users,id',
              'name' => 'required|string|max:150',
              'location' => 'nullable|string|max:255',
              'status' => 'nullable|in:0,1', // ✅ 1 = active, 0 = inactive
@@ -67,8 +63,6 @@ class ShopController extends Controller
              'close_time' => 'nullable|date_format:H:i',
              'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
          ]);
-     
-         $validated['owner_user_id'] = $user->id;
      
          // ✅ Store image locally
          if ($request->hasFile('image')) {
@@ -117,25 +111,15 @@ class ShopController extends Controller
      */
     public function update(Request $request, Shop $shop)
     {
-        $user = Auth::user();
-    
-        // Only shop owners can update
-        if (!$this->isAuthorized($user, $shop)) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-        // User must own this shop
-        if ($shop->owner_user_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-    
         $validated = $request->validate([
+            'owner_user_id' => 'nullable|exists:users,id',
             'name' => 'sometimes|string|max:150',
             'location' => 'nullable|string|max:255',
             'status' => 'sometimes|in:0,1', // 1 = active, 0 = inactive
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'open_time' => 'nullable|date_format:H:i',
-            'close_time' => 'nullable|date_format:H:i',
+            'open_time' => ['nullable','regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
+            'close_time' => ['nullable','regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
     

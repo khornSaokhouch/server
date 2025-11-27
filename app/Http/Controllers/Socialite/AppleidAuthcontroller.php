@@ -41,7 +41,6 @@ class AppleidAuthController extends Controller
     {
         $request->validate([
             'token' => 'required|string',
-            'phone' => 'nullable|string|max:20',
         ]);
 
         try {
