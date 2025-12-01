@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 
 
+
 class ShopItemOptionStatusController extends Controller
 {
     // List all statuses
@@ -112,6 +113,8 @@ public function showByItem(Request $request, $itemId, $shopId)
 
         // Execute query
         $statuses = $statuses->get();
+        // Remove entries where option is null
+        $statuses = $statuses->filter(fn($status) => $status->option !== null);
 
         // Check if empty
         if ($statuses->isEmpty()) {
@@ -128,12 +131,47 @@ public function showByItem(Request $request, $itemId, $shopId)
         ], 500);
     }
 }
+public function showByItemShop(Request $request, $itemId, $shopId)
+{
+    try {
+        $statuses = ShopItemOptionStatus::with([
+            'item',
+            'optionGroup',
+            'option' => function ($query) {
+                $query->where('is_active', 1);
+            }
+        ])
+        ->where('item_id', $itemId)
+        ->whereHas('item', fn($q) => $q->where('is_available', 1));
 
+        if ($shopId) {
+            $statuses->where('shop_id', $shopId);
+        }
 
+        $statuses = $statuses->get();
+
+        // Remove entries where option is null
+        $statuses = $statuses->filter(fn($status) => $status->option !== null);
+
+        if ($statuses->isEmpty()) {
+            return response()->json(['message' => 'No active statuses found'], 404);
+        }
+
+        return response()->json($statuses->values()); // reset array keys
+
+    } catch (\Exception $e) {
+        \Log::error('ShopItemOptionStatus error: '.$e->getMessage());
+        return response()->json([
+            'error' => 'Server error: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
 
     
     // Create a new status
+   
+    
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -141,28 +179,40 @@ public function showByItem(Request $request, $itemId, $shopId)
             'item_id' => 'required|exists:items,id',
             'item_option_group_id' => 'required|exists:item_option_groups,id',
             'item_option_id' => 'required|exists:item_options,id',
-            'status' => 'required|boolean',
+            'status' => 'nullable|boolean',
         ]);
     
         try {
-            $status = ShopItemOptionStatus::create($data);
+            $status = ShopItemOptionStatus::updateOrCreate(
+                [
+                    'shop_id' => $data['shop_id'],
+                    'item_id' => $data['item_id'],
+                    'item_option_group_id' => $data['item_option_group_id'],
+                    'item_option_id' => $data['item_option_id'],
+                ],
+                [
+                    'status' => $data['status'] ?? 1,
+                ]
+            );
+    
+            // ALWAYS return a JSON object (Eloquent model will be serialized)
             return response()->json($status, 201);
         } catch (QueryException $e) {
-            // Check if the error is a duplicate entry (MySQL error code 1062)
             if ($e->getCode() == 23000) {
                 return response()->json([
-                    'message' => 'Duplicate entry: this shop-item-option combination already exists.',
+                    'message' => 'Duplicate entry',
                     'error' => $e->getMessage(),
                 ], 400);
             }
     
-            // Other SQL errors
             return response()->json([
                 'message' => 'Database error',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+    
+    
     // Update status
     public function update(Request $request, $id)
     {
