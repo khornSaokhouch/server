@@ -177,7 +177,8 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
     // Shop Items Management
     Route::prefix('/items')->group(function () {
         Route::get('/', [ItemOwnerController::class, 'index']);   
-        Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']);               // List all items for owner
+        Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']); 
+        Route::get('/{itemId}', [ItemOptionGroupAssignmentController::class, 'show']);              // List all items for owner
         Route::post('/', [ItemOwnerController::class, 'store']);    
         Route::patch('/{itemId}/status', [ItemOwnerController::class, 'updateStatus']);    // Update item status
         Route::delete('/{itemId}', [ItemOwnerController::class, 'destroy']);                     // Delete item             // Create new item
@@ -193,11 +194,12 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
 ///  // Shop Item Option Statuses Management
    Route::prefix('shop-item-option-status')->group(function () {
     Route::get('/', [ShopItemOptionStatusController::class, 'index']); // List all
-    Route::get('/{itemId}', [ShopItemOptionStatusController::class, 'showByItem']); // Get one
+    Route::get('/{itemId}/shopId/{shopId}', [ShopItemOptionStatusController::class, 'showByItemShop']); // Get one
     Route::post('/', [ShopItemOptionStatusController::class, 'store']); // Create
     Route::patch('/{id}', [ShopItemOptionStatusController::class, 'update']); // Update status
     Route::delete('/{id}', [ShopItemOptionStatusController::class, 'destroy']); // Delete
 });
+
 
 }); 
             

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Item;
 use App\Models\ItemOptionGroup;
+use Illuminate\Support\Str;
 
 class ItemOptionGroupAssignmentController extends Controller
 {
@@ -46,9 +47,11 @@ class ItemOptionGroupAssignmentController extends Controller
     /**
  * Show assigned option groups for a specific item
  */
+
+
 public function show(Request $request, $itemId)
 {
-    $shopId = $request->query('shop_id'); // Make sure shop_id is passed
+    $shopId = $request->query('shop_id');
 
     $item = Item::with(['optionGroups.options' => function ($q) use ($shopId) {
         $q->where('is_active', 1)
@@ -65,19 +68,22 @@ public function show(Request $request, $itemId)
         return $group->options->isNotEmpty();
     })->values();
 
-    // Convert icon paths to full URLs
+    // Convert icon paths to full URLs safely (avoid double-prefixing full URLs)
     $item->optionGroups->transform(function ($group) {
-        $group->options->transform(function ($option) {
-            if ($option->icon) {
-                $option->icon = asset('storage/' . $option->icon);
-            }
-            return $option;
-        });
+        
         return $group;
     });
 
-    return response()->json($item);
+    // Convert to array and remove the key so response won't include "option_groups"
+    $data = $item->toArray();
+    if (array_key_exists('option_groups', $data)) {
+        unset($data['option_groups']);
+    }
+
+    return response()->json($data);
 }
+
+
 
 
     /**
