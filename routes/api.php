@@ -111,6 +111,7 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('admin')->group(function
     Route::prefix('item-option-groups')->group(function () {
         Route::get('/', [ItemOptionGroupController::class, 'index']);
         Route::post('/', [ItemOptionGroupController::class, 'store']);
+        Route::get('/display', [ItemOptionGroupController::class, 'display']);
         Route::get('/{id}', [ItemOptionGroupController::class, 'show']);
         Route::put('/{id}', [ItemOptionGroupController::class, 'update']);
         Route::delete('/{id}', [ItemOptionGroupController::class, 'destroy']);

@@ -26,6 +26,13 @@ class ItemOptionGroupController extends Controller
     
         return response()->json($groups);
     }
+
+
+    public function display()
+    {
+        $groups = ItemOptionGroup::all();
+        return response()->json($groups);
+    }
     
 
     public function store(Request $request)

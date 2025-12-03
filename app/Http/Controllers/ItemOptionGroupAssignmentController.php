@@ -101,4 +101,11 @@ public function show(Request $request, $itemId)
 
         return response()->json(['message' => 'Option group removed successfully']);
     }
+
+    // public function destroy($id)
+    // {
+    //     $group = ItemOptionGroup::findOrFail($id);
+    //     $group->delete();
+    //     return response()->json(['message' => 'Deleted successfully']);
+    // }
 }
