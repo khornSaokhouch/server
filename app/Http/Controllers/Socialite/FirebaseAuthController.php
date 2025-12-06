@@ -99,12 +99,14 @@ class FirebaseAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate(['id_token' => 'required|string']);
-
+    
         try {
+            // 1) Verify Firebase ID token
             $verifiedToken = $this->auth->verifyIdToken($request->id_token);
             $uid = $verifiedToken->claims()->get('sub');
             $firebaseUser = $this->auth->getUser($uid);
-
+    
+            // 2) Find or create user
             $user = User::firstOrCreate(
                 ['firebase_uid' => $uid],
                 [
@@ -112,37 +114,44 @@ class FirebaseAuthController extends Controller
                     'email' => $firebaseUser->email,
                     'phone' => $firebaseUser->phoneNumber,
                     'profile_image' => $firebaseUser->photoUrl,
-                    'password' => Hash::make(Str::random(16)),
+                    'password' => Hash::make(Str::random(32)),
                     'role' => 'customer',
                 ]
             );
-
-            // Update missing info if needed
+    
+            // 3) Update user with latest Firebase data
             $updateData = [];
-            if ($firebaseUser->phoneNumber && $firebaseUser->phoneNumber !== $user->phone) $updateData['phone'] = $firebaseUser->phoneNumber;
-            if ($firebaseUser->photoUrl && (!$user->profile_image || str_contains($user->profile_image, 'googleusercontent.com'))) $updateData['profile_image'] = $firebaseUser->photoUrl;
-
-            if ($updateData) $user->update($updateData);
-
-            // Ask for phone if missing
-            if (!$user->phone) {
-                $tempToken = Str::random(32);
-                Cache::put('tempToken_' . $tempToken, $user->id, 1500); // 25 min
-
-                return response()->json(['ok' => true, 'needs_phone' => true, 'tempToken' => $tempToken, 'user' => $user]);
+            if ($firebaseUser->phoneNumber && $firebaseUser->phoneNumber !== $user->phone) {
+                $updateData['phone'] = $firebaseUser->phoneNumber;
             }
-
+    
+            if ($firebaseUser->photoUrl && $firebaseUser->photoUrl !== $user->profile_image) {
+                $updateData['profile_image'] = $firebaseUser->photoUrl;
+            }
+    
+            if (!empty($updateData)) {
+                $user->update($updateData);
+            }
+    
+            // 4) Issue JWT token for the user
             $token = JWTAuth::fromUser($user);
-            return response()->json(['ok' => true, 'needs_phone' => false, 'token' => $token, 'user' => $user]);
-
+    
+            // 5) Return clean response
+            return response()->json([
+                'ok' => true,
+                'token' => $token,
+                'user' => $user->only([
+                    'id', 'name', 'email', 'phone', 'role', 'firebase_uid'
+                ]),
+            ]);
+    
         } catch (\Kreait\Firebase\Exception\Auth\FailedToVerifyToken $e) {
-            Log::error('Firebase token verification failed: ' . $e->getMessage());
             return response()->json(['error' => 'Invalid Firebase token'], 401);
         } catch (\Throwable $e) {
-            Log::error('Firebase login error: ' . $e->getMessage());
             return response()->json(['error' => 'Firebase login failed'], 500);
         }
     }
+    
 
     /**
      * Update phone after Firebase login

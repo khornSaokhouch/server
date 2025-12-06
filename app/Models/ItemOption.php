@@ -13,7 +13,8 @@ class ItemOption extends Model
         'item_option_group_id',
         'name',
         'price_adjust_cents',
-        'icon'
+        'icon',
+        'is_active',
     ];
 
     /**
