@@ -21,6 +21,9 @@ use App\Http\Controllers\ItemOptionGroupAssignmentController;
 use App\Http\Controllers\ItemOwnerController;
 use App\Http\Controllers\Socialite\AppleidAuthController;
 use App\Http\Controllers\ItemOptionGroupController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ShopItemOptionStatusController;
 use Cloudinary\Transformation\Prefix;
 
@@ -201,6 +204,9 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
     Route::delete('/{id}', [ShopItemOptionStatusController::class, 'destroy']); // Delete
 });
 
+// promotions
+  Route::apiResource('promotions', PromotionController::class);
+
 
 }); 
             
@@ -223,6 +229,23 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('users')->group(function
     Route::get('/{shop_id}/items', [ItemOwnerController::class, 'itemsByOwnerAndCategory']);
     Route::get('/item-option-groups/{itemId}', [ItemOptionGroupAssignmentController::class, 'show']);
     Route::get('/shop-item/{itemId}/shopId/{shopId}', [ShopItemOptionStatusController::class, 'showByItem']);
+    
+    //-----------
+    // Orders Items
+    //-----------
+
+    Route::prefix('orders')->group(function () {
+    Route::get('/all', [OrderController::class, 'index']);
+    Route::get('/{id}', [OrderController::class, 'show']);
+    Route::post('/', [OrderController::class, 'store']);
+    Route::put('/{id}', [OrderController::class, 'update']);
+    Route::patch('/{id}', [OrderController::class, 'update']);
+    Route::delete('/{id}', [OrderController::class, 'destroy']);
+    });
+
+    Route::post('/stripe/payment-intent', [PaymentController::class, 'createPaymentIntent']);
+    Route::post('/stripe/checkout-session', [PaymentController::class, 'createCheckoutSession']);
+    Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
 });
 
 /*

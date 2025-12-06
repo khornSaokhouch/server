@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ShopItemOptionStatus;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 
 
@@ -131,47 +132,125 @@ public function showByItem(Request $request, $itemId, $shopId)
         ], 500);
     }
 }
-public function showByItemShop(Request $request, $itemId, $shopId)
-{
-    try {
-        $statuses = ShopItemOptionStatus::with([
-            'item',
-            'optionGroup',
-            'option' => function ($query) {
-                $query->where('is_active', 1);
-            }
-        ])
-        ->where('item_id', $itemId)
-        ->whereHas('item', fn($q) => $q->where('is_available', 1));
+// public function showByItemShop(Request $request, $itemId, $shopId)
+// {
+//     try {
+//         $statuses = ShopItemOptionStatus::with([
+//             'item',
+//             'optionGroup',
+//             'option' => function ($query) {
+//                 $query->where('is_active', 1);
+//             }
+//         ])
+//         ->where('item_id', $itemId)
+//         ->whereHas('item', fn($q) => $q->where('is_available', 1));
 
-        if ($shopId) {
-            $statuses->where('shop_id', $shopId);
-        }
+//         if ($shopId) {
+//             $statuses->where('shop_id', $shopId);
+//         }
 
-        $statuses = $statuses->get();
+//         $statuses = $statuses->get();
 
-        // Remove entries where option is null
-        $statuses = $statuses->filter(fn($status) => $status->option !== null);
+//         // Remove entries where option is null
+//         $statuses = $statuses->filter(fn($status) => $status->option !== null);
 
-        if ($statuses->isEmpty()) {
-            return response()->json(['message' => 'No active statuses found'], 404);
-        }
+//         if ($statuses->isEmpty()) {
+//             return response()->json(['message' => 'No active statuses found'], 404);
+//         }
 
-        return response()->json($statuses->values()); // reset array keys
+//         return response()->json($statuses->values()); // reset array keys
 
-    } catch (\Exception $e) {
-        \Log::error('ShopItemOptionStatus error: '.$e->getMessage());
-        return response()->json([
-            'error' => 'Server error: ' . $e->getMessage()
-        ], 500);
-    }
-}
+//     } catch (\Exception $e) {
+//         \Log::error('ShopItemOptionStatus error: '.$e->getMessage());
+//         return response()->json([
+//             'error' => 'Server error: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
 
 
     
     // Create a new status
    
     
+
+
+
+
+    public function showByItemShop(Request $request, $itemId, $shopId)
+    {
+        try {
+            $statusesQuery = ShopItemOptionStatus::with([
+                'item',
+                'optionGroup',
+                'option' => function ($query) {
+                    $query->where('is_active', 1);
+                }
+            ])
+            ->where('item_id', $itemId)
+            ->whereHas('item', fn($q) => $q->where('is_available', 1));
+    
+            if ($shopId) {
+                $statusesQuery->where('shop_id', $shopId);
+            }
+    
+            $statuses = $statusesQuery->get();
+    
+            // Remove entries where option is null
+            $statuses = $statuses->filter(fn($status) => $status->option !== null);
+    
+            // Map and apply pivot existence rules:
+            // - if pivot exists => keep as-is (include item_option_group_id)
+            // - if pivot missing AND option_group_id == 1 => exclude the status entirely
+            // - if pivot missing AND option_group_id != 1 => include but remove item_option_group_id key
+            $processed = $statuses->map(function ($status) use ($itemId) {
+                $arr = $status->toArray();
+    
+                // If no item_option_group_id present, just return as-is
+                if (! array_key_exists('item_option_group_id', $arr) || $arr['item_option_group_id'] === null) {
+                    return $arr;
+                }
+    
+                $groupId = $arr['item_option_group_id'];
+    
+                $exists = DB::table('item_item_option_group')
+                    ->where('item_id', $itemId)
+                    ->where('item_option_group_id', $groupId)
+                    ->exists();
+    
+                if ($exists) {
+                    return $arr; // keep as-is
+                }
+    
+                // pivot missing
+                if ((int) $groupId) {
+                    // signal to caller to remove this item by returning null
+                    return null;
+                }
+    
+                // For other groups: remove the key but keep rest
+                unset($arr['item_option_group_id']);
+                return $arr;
+            })
+            // remove nulls (those were the option_group_id == 1 + pivot-missing)
+            ->filter(fn($x) => $x !== null)
+            ->values();
+    
+            if ($processed->isEmpty()) {
+                return response()->json(['message' => 'No active statuses found'], 404);
+            }
+    
+            return response()->json($processed);
+    
+        } catch (\Exception $e) {
+            \Log::error('ShopItemOptionStatus error: '.$e->getMessage());
+            return response()->json([
+                'error' => 'Server error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+
     public function store(Request $request)
     {
         $data = $request->validate([
