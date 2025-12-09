@@ -10,11 +10,40 @@ class PromotionController extends Controller
     /**
      * Display a listing of promotions.
      */
-    public function index()
-    {
-        // Get all promotions with shop relationship
-        return Promotion::with('shop')->get();
+  // in PromotionController.php
+
+// public function index(Request $request)
+// {
+//     // if code query supplied, return that specific promotion (with relations)
+//     if ($request->filled('code')) {
+//         $code = $request->query('code');
+//         $promotion = Promotion::with('shop', 'orders')
+//             ->where('code', $code)
+//             ->firstOrFail();
+
+//         return response()->json($promotion);
+//     }
+
+//     // otherwise return collection (with shop relation)
+//     return Promotion::with('shop')->get();
+// }
+public function index(Request $request)
+{
+    // if code query supplied, return that specific promotion (with relations)
+    if ($request->filled('code')) {
+        $code = $request->query('code');
+        $promotion = Promotion::with('shop')
+            ->where('code', $code)
+            ->firstOrFail();
+
+        return response()->json($promotion);
     }
+
+    // otherwise return collection (with shop relation)
+    return Promotion::with('shop')->get();
+}
+
+
 
     /**
      * Store a newly created promotion.
