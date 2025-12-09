@@ -92,7 +92,7 @@ class OrderController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.namesnapshot' => ['nullable', 'string', 'max:150'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
-
+    
             // option_groups on each order item (nullable array)
             'items.*.option_groups' => ['nullable', 'array'],
             'items.*.option_groups.*.group_id' => ['required_with:items.*.option_groups', 'integer'],
@@ -100,36 +100,44 @@ class OrderController extends Controller
             'items.*.option_groups.*.selected_option' => ['required_with:items.*.option_groups', 'string', 'max:150'],
             'items.*.option_groups.*.option_id' => ['required_with:items.*.option_groups', 'integer'],
         ]);
-
+    
         $placedAt = isset($validated['placedat']) ? Carbon::parse($validated['placedat']) : Carbon::now();
-
-        // Calculate subtotal from items (server authoritative)
+    
+        // --- Calculate subtotal (server authoritative, integer cents) ---
         $subtotal = 0;
         foreach ($validated['items'] as $it) {
-            $subtotal += (int) $it['unitprice_cents'] * (int) $it['quantity'];
+            $unit = (int) $it['unitprice_cents'];
+            $qty = (int) $it['quantity'];
+            $subtotal += $unit * $qty;
         }
-
+    
+        // --- Resolve promotion (by id or code) ---
         $promotion = null;
         if (!empty($validated['promoid'])) {
             $promotion = Promotion::find($validated['promoid']);
         } elseif (!empty($validated['promocode'])) {
             $promotion = Promotion::where('code', $validated['promocode'])->first();
         }
-
+    
         $discount = 0;
-
+    
         if ($promotion) {
             // Validate promotion is active and within date range
             $now = $placedAt;
-
+    
             if (!$promotion->isactive) {
                 return response()->json(['message' => 'Promotion is not active.'], 422);
             }
-
+    
             if ($now->lt(Carbon::parse($promotion->startsat)) || $now->gt(Carbon::parse($promotion->endsat))) {
                 return response()->json(['message' => 'Promotion is not valid at this time.'], 422);
             }
-
+    
+            // Optional: minimum order amount (in cents) to be eligible
+            if (!empty($promotion->min_order_cents) && $subtotal < (int)$promotion->min_order_cents) {
+                return response()->json(['message' => 'Order does not meet the promotion minimum order amount.'], 422);
+            }
+    
             // Enforce usage limit per user (interpretation: user can use X times)
             if (!is_null($promotion->usagelimit)) {
                 $userUses = $promotion->orders()->where('userid', $validated['userid'])->count();
@@ -137,25 +145,41 @@ class OrderController extends Controller
                     return response()->json(['message' => 'Promotion usage limit reached for this user.'], 422);
                 }
             }
-
-            // Calculate discount (integer math)
+    
+            // --- Calculate discount using integer cents math ---
+            // Support both percent and fixedamount promotions.
+            // If percent: promotion->value can be integer (10) or float/decimal (12.5)
             if ($promotion->type === 'percent') {
-                $discount = intdiv($subtotal * (int) $promotion->value, 100);
-            } else { // fixedamount
-                $discount = (int) $promotion->value;
-            }
+                // Normalize value to numeric (could be string/float)
+                $percent = (float) $promotion->value;
+                // discount = round(subtotal * percent / 100)
+                $discount = (int) round($subtotal * ($percent / 100.0));
+            } else { // fixedamount (assume stored in cents)
+                $fixedamount = (float) $promotion->value;
 
+                $discount = (int) $promotion->value; // expect cents
+            }
+    
+            // Optional: enforce per-order max discount cap (in cents)
+            if (!empty($promotion->max_discount_cents)) {
+                $maxCap = (int) $promotion->max_discount_cents;
+                if ($discount > $maxCap) {
+                    $discount = $maxCap;
+                }
+            }
+    
             // Ensure discount doesn't exceed subtotal
             if ($discount > $subtotal) {
                 $discount = $subtotal;
             }
         }
-
+    
         $total = $subtotal - $discount;
-
+        if ($total < 0) $total = 0;
+    
         // Save order & order items in a transaction
         DB::beginTransaction();
-
+    
         try {
             $order = Order::create([
                 'userid' => $validated['userid'],
@@ -168,7 +192,7 @@ class OrderController extends Controller
                 'placedat' => $placedAt,
                 'updatedat' => $placedAt,
             ]);
-
+    
             // create items (including option_groups JSON)
             foreach ($validated['items'] as $it) {
                 $oi = new OrderItem([
@@ -177,15 +201,15 @@ class OrderController extends Controller
                     'unitprice_cents' => (int) $it['unitprice_cents'],
                     'quantity' => (int) $it['quantity'],
                     'notes' => $it['notes'] ?? null,
-                    'option_groups' => $it['option_groups'] ?? [], // saved as JSON via cast
+                    'option_groups' => $it['option_groups'] ?? [], // cast to JSON if model has $casts
                 ]);
                 $order->orderItems()->save($oi);
             }
-
+    
             DB::commit();
-
+    
             $order->load('orderItems.item.optionGroups.options');
-
+    
             return response()->json([
                 'message' => 'Order created successfully.',
                 'data' => $order
@@ -198,6 +222,7 @@ class OrderController extends Controller
             ], 500);
         }
     }
+    
 
     /**
      * Update order status or other editable fields.

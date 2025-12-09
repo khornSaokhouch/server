@@ -235,12 +235,12 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('users')->group(function
     //-----------
 
     Route::prefix('orders')->group(function () {
-    Route::get('/all', [OrderController::class, 'index']);
-    Route::get('/{id}', [OrderController::class, 'show']);
-    Route::post('/', [OrderController::class, 'store']);
-    Route::put('/{id}', [OrderController::class, 'update']);
-    Route::patch('/{id}', [OrderController::class, 'update']);
-    Route::delete('/{id}', [OrderController::class, 'destroy']);
+        Route::get('/all', [OrderController::class, 'index']);
+        Route::get('/{id}', [OrderController::class, 'show']);
+        Route::post('/', [OrderController::class, 'store']);
+        Route::put('/{id}', [OrderController::class, 'update']);
+        Route::patch('/{id}', [OrderController::class, 'update']);
+        Route::delete('/{id}', [OrderController::class, 'destroy']);
     });
 
     Route::post('/stripe/payment-intent', [PaymentController::class, 'createPaymentIntent']);
@@ -265,4 +265,5 @@ Route::prefix('shops')->middleware('throttle:api')->group(function () {
 
     
     // Route::get('/categories/{category}', [CategoryController::class, 'show']);
+    // Route::apiResource('promotions', PromotionController::class);
 });
