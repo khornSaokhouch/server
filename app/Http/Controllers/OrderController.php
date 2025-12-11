@@ -155,8 +155,7 @@ class OrderController extends Controller
                 // discount = round(subtotal * percent / 100)
                 $discount = (int) round($subtotal * ($percent / 100.0));
             } else { // fixedamount (assume stored in cents)
-                $fixedamount = (float) $promotion->value;
-
+            
                 $discount = (int) $promotion->value; // expect cents
             }
     
