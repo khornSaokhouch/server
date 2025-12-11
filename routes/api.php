@@ -166,7 +166,8 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
 
     // Shops
     Route::get('/', [ItemOwnerController::class, 'index']);                  // List all shops for owner
-    Route::get('/owner', [ShopController::class, 'showByOwner']);           // Show shop for authenticated owner
+    Route::get('/owner', [ShopController::class, 'showByOwner']);  
+    // Route::get('/{shop}', [ShopController::class, 'show']);         // Show shop for authenticated owner
     Route::get('/{shopId}/categories', [ItemOwnerController::class, 'categoriesByOwner']); // List categories by shop
 
     // Shop Categories Management
@@ -204,8 +205,20 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
     Route::delete('/{id}', [ShopItemOptionStatusController::class, 'destroy']); // Delete
 });
 
-// promotions
+ // promotions
   Route::apiResource('promotions', PromotionController::class);
+
+      //-----------
+    // Orders Items
+    //-----------
+    Route::prefix('orders')->group(function () {
+        Route::get('/all', [OrderController::class, 'index']);
+        Route::get('/{id}', [OrderController::class, 'show']);
+        Route::post('/', [OrderController::class, 'store']);
+        Route::put('/{id}', [OrderController::class, 'update']);
+        Route::patch('/{id}', [OrderController::class, 'update']);
+        Route::delete('/{id}', [OrderController::class, 'destroy']);
+    });
 
 
 }); 
@@ -259,8 +272,7 @@ Route::prefix('shops')->middleware('throttle:api')->group(function () {
     Route::get('/{shop_id}/items', [ItemOwnerController::class, 'itemsByOwnerAndCategory']);
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/category/{categoryId}', [ItemController::class, 'showAllByCategory']);
-    Route::get('/{shop}', [ShopController::class, 'show']);
-
+    Route::get('/{shop}', [ShopController::class, 'show']);// List items by shop & category
     Route::get('/shop-item/{itemId}/shopId/{shopId}', [ShopItemOptionStatusController::class, 'showByItem']);
 
     
