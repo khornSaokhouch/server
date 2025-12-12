@@ -203,6 +203,55 @@ public function itemsByOwnerAndCategory($shop_id)
         ->get()
         ->map(function ($itemOwner) {
             return [
+                'id' => $itemOwner->id,
+                'shop_id' => $itemOwner->shop_id,
+                'category_id' => $itemOwner->category_id,
+                'category' => [
+                    'id' => $itemOwner->category->id ?? null,
+                    'name' => $itemOwner->category->name ?? null,
+                    'image_url' => $itemOwner->category->image_category_url ?? null,
+                    'description' => $itemOwner->category->description ?? null,
+                    'status' => $itemOwner->category->status ?? null,
+                ],
+                'item' => [
+                    'id' => $itemOwner->item->id ?? null,
+                    'name' => $itemOwner->item->name ?? null,
+                    'description' => $itemOwner->item->description ?? null,
+                    'price_cents' => $itemOwner->item->price_cents ?? null,
+                    'image_url' => $itemOwner->item->image_url ?? null,
+                    'is_available' => $itemOwner->item->is_available ?? null,
+                ],
+            ];
+        });
+
+    return response()->json([
+        'message' => 'Items retrieved successfully',
+        'data' => $items
+    ], 200);
+}
+
+public function itemsByOwner($shop_id)
+{
+    $items = ItemOwner::with(['item', 'category', 'shop'])
+        ->where('shop_id', $shop_id)
+        // ->where('inactive', 1) // only active items
+        ->whereHas('category', function ($query) {
+            $query->where('status', 1); // only active categories
+        })
+        ->whereHas('item', function ($query) {
+            $query->where('is_available', 1); // only available items
+        })
+        ->whereExists(function ($q) use ($shop_id) {
+            $q->select(DB::raw(1))
+              ->from('category_shop')
+              ->whereColumn('category_shop.category_id', 'item_owners.category_id')
+              ->whereColumn('category_shop.shop_id', 'item_owners.shop_id')
+              ->where('category_shop.status', 1); // only active in pivot
+        })
+        ->get()
+        ->map(function ($itemOwner) {
+            return [
+                'id' => $itemOwner->id,
                 'shop_id' => $itemOwner->shop_id,
                 'category_id' => $itemOwner->category_id,
                 'category' => [
