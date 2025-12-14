@@ -191,6 +191,7 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
     
     Route::get('/{shopId}/items', [ItemOwnerController::class, 'itemsByOwnerAndCategory']); // List items by shop & category
     Route::get('/items', [ItemOwnerController::class, 'itemsByShopAndCategory']); // List items by category
+    Route::get('/ByOwner/{{shopId}}', [ItemOwnerController::class, 'itemsByOwner']); // List items by category
     Route::post('/item', [ItemOwnerController::class, 'store']);                             // Create new item
 
    // Get all items for the authenticated shop owner
@@ -205,8 +206,18 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('shop')->group(function 
     Route::delete('/{id}', [ShopItemOptionStatusController::class, 'destroy']); // Delete
 });
 
- // promotions
-  Route::apiResource('promotions', PromotionController::class);
+     // promotions
+   
+    // Route::get('shop/promotions', [PromotionController::class, 'index']);
+
+    Route::prefix('promotions')->group(function () {
+        Route::get('/', [PromotionController::class, 'index']);
+        Route::post('/', [PromotionController::class, 'store']);
+        Route::get('/shops', [PromotionController::class, 'showShopId']);
+        Route::get('/{id}', [PromotionController::class, 'show']);
+        Route::put('/{id}', [PromotionController::class, 'update']);
+        Route::delete('/{id}', [PromotionController::class, 'destroy']);
+    });
 
       //-----------
     // Orders Items

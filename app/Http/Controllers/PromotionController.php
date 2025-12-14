@@ -79,6 +79,51 @@ public function index(Request $request)
         return $promotion;
     }
 
+
+    //  Add new method to filter promotions by shopid, code, and name`
+
+    //------------------------------------------------------------
+    //GET /api/shop/promotions?shopid=1
+    //GET /api/shop/promotions?shopid=1&code=SUMMER20
+    //GET /api/shop/promotions?shopid=1&name=Summer
+    //GET /api/shop/promotions?shopid=1&name=Summer&code=SUMMER20
+    //------------------------------------------------------------
+    
+    public function showShopId(Request $request)
+{
+    // Validate required shopid
+    $shopId = $request->query('shopid');
+    if (empty($shopId)) {
+        return response()->json([
+            'message' => 'Missing required query parameter: shopid'
+        ], 400);
+    }
+
+    // Optional filters
+    $code = $request->query('code');
+    $name = $request->query('name'); // <── new filter
+
+    // Build query
+    $query = Promotion::with('shop')
+        ->where('shopid', (int) $shopId);
+
+    // Filter by exact code
+    if (!empty($code)) {
+        $query->where('code', $code);
+    }
+
+    // Filter by name (supports partial match)
+    if (!empty($name)) {
+        $query->where('name', 'LIKE', "%$name%");
+    }
+
+    // Get results
+    $promotions = $query->get();
+
+    return response()->json($promotions);
+    }
+
+
     /**
      * Update the specified promotion.
      */
