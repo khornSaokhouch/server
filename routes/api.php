@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Aba\ABAController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\MessageController;
@@ -270,7 +271,24 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('users')->group(function
     Route::post('/stripe/payment-intent', [PaymentController::class, 'createPaymentIntent']);
     Route::post('/stripe/checkout-session', [PaymentController::class, 'createCheckoutSession']);
     Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
+    Route::get('/payments/user/{userId}', [PaymentController::class, 'getPaymentsByUser']);
+    Route::get('/payments/order/{orderId}', [PaymentController::class, 'getPaymentsByOrder']);
+
+
+    //-----------
+    //Aba 
+    //-----------
+
+ 
+
 });
+
+// Route::post('/aba/aof/request-qr', [ABAController::class, 'requestAOFQr']);
+Route::post('/aba/qr', [ABAController::class, 'requestAOFQr']);
+Route::post('/aba/aof/callback', [ABAController::class, 'callback']);
+
+
+
 
 /*
 |--------------------------------------------------------------------------
