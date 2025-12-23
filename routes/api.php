@@ -25,7 +25,9 @@ use App\Http\Controllers\ItemOptionGroupController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\Push\DeviceTokenController;
 use App\Http\Controllers\ShopItemOptionStatusController;
+use App\Models\Order;
 use Cloudinary\Transformation\Prefix;
 
 /*
@@ -279,13 +281,51 @@ Route::middleware(['auth:api', 'throttle:api'])->prefix('users')->group(function
     //Aba 
     //-----------
 
- 
-
+   
 });
 
 // Route::post('/aba/aof/request-qr', [ABAController::class, 'requestAOFQr']);
 Route::post('/aba/qr', [ABAController::class, 'requestAOFQr']);
 Route::post('/aba/aof/callback', [ABAController::class, 'callback']);
+Route::get('/payments/aba/status', [ABAController::class, 'status']);
+Route::post('/push/register', [DeviceTokenController::class, 'register']);
+
+Route::post('/push/test', function () {
+    $token = \App\Models\DeviceToken::latest()->value('token');
+
+    if (!$token) {
+        return response()->json(['error' => 'No device token found'], 404);
+    }
+
+    $messaging = (new \Kreait\Firebase\Factory)
+        ->withServiceAccount(env('FIREBASE_CREDENTIALS'))
+        ->createMessaging();
+
+    $message = [
+        'notification' => [
+            'title' => 'Test Push',
+            'body'  => 'Hello from Laravel 🚀',
+        ],
+        'data' => [
+            'type' => 'test',
+        ],
+    ];
+
+    $messaging->sendMulticast($message, [$token]);
+
+    return response()->json(['status' => 'sent']);
+});
+
+Route::post('/test/payment-push/{order}', function (Order $order) {
+    app(\App\Services\PushNotificationService::class)
+        ->sendOrderStatusUpdate($order);
+
+    return response()->json(['message' => 'Push sent']);
+});
+
+
+
+
 
 
 
