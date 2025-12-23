@@ -39,6 +39,7 @@ class Shop extends Model
     {
         return $this->hasMany(Shop::class, 'owner_user_id');
     }
+    
 
     public function getImageUrlAttribute()
     {
