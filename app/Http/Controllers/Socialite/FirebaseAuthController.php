@@ -19,12 +19,11 @@ class FirebaseAuthController extends Controller
 
     public function __construct()
     {
-        // Initialize Firebase Auth
         $this->auth = (new Factory)
-            ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+            ->withServiceAccount(env('FIREBASE_CREDENTIALS'))
             ->createAuth();
     }
-
+    
     /**
      * Apple login with optional phone
      */

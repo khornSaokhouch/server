@@ -19,20 +19,13 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class AppleidAuthController extends Controller
 {
     protected $auth;
-
     public function __construct()
     {
-        // Validate Firebase credentials
-        $firebaseCredentials = env('FIREBASE_CREDENTIALS');
-        if (!$firebaseCredentials || !file_exists(base_path($firebaseCredentials))) {
-            throw new \Exception('Firebase credentials file is missing or invalid.');
-        }
-
-        // Initialize Firebase Auth
         $this->auth = (new Factory)
-            ->withServiceAccount(base_path($firebaseCredentials))
+            ->withServiceAccount(env('FIREBASE_CREDENTIALS'))
             ->createAuth();
     }
+    
 
     /**
      * Apple Login

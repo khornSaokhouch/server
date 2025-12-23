@@ -165,4 +165,91 @@ class PaymentController extends Controller
 
         return response()->json(['received' => true]);
     }
+
+
+    
+    
+    public function getPaymentsByUser($userId)
+    {
+        Stripe::setApiKey(config('services.stripe.secret'));
+    
+        $payments = Payment::where('userid', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($payment) {
+                if ($payment->stripe_payment_intent_id) {
+                    $intent = PaymentIntent::retrieve([
+                        'id' => $payment->stripe_payment_intent_id,
+                        'expand' => ['latest_charge.payment_method_details'],
+                    ]);
+    
+                    $payment->payment_method_type =
+                        $intent->latest_charge?->payment_method_details?->type;
+                }
+    
+                return $payment;
+            });
+    
+        return response()->json([
+            'success' => true,
+            'data' => $payments,
+        ]);
+    }
+
+
+public function getPaymentsByOrder($orderId)
+{
+    Stripe::setApiKey(config('services.stripe.secret'));
+
+    $payments = Payment::where('orderid', $orderId)
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($payment) {
+
+            $payment->payment_method_type = null;
+            $payment->payment_method_brand = null;
+            $payment->payment_method_last4 = null;
+
+            if ($payment->stripe_payment_intent_id) {
+                $intent = PaymentIntent::retrieve([
+                    'id' => $payment->stripe_payment_intent_id,
+                    'expand' => ['latest_charge.payment_method_details'],
+                ]);
+
+                // ONLY exists when payment succeeded
+                if ($intent->latest_charge) {
+                    $details = $intent->latest_charge->payment_method_details;
+
+                    $payment->payment_method_type = $details->type ?? null;
+
+                    if ($details->type === 'card') {
+                        $payment->payment_method_brand =
+                            $details->card->brand ?? null;
+
+                        $payment->payment_method_last4 =
+                            $details->card->last4 ?? null;
+                    }
+                }
+            }
+
+            return $payment;
+        });
+
+    return response()->json([
+        'success' => true,
+        'data' => $payments,
+    ]);
+}
+
+public function status($orderId)
+{
+    $payment = Payment::where('order_id', $orderId)->latest()->first();
+
+    return response()->json([
+        'paid' => $payment?->status === 'PAID',
+    ]);
+}
+
+
+    
 }
