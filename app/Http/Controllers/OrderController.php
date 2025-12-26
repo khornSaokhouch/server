@@ -18,7 +18,7 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Order::with(['orderItems.item.optionGroups.options','shop']);
+        $query = Order::with(['orderItems.item.optionGroups.options','shop','user']);
 
         if ($request->filled('userid')) {
             $query->where('userid', $request->userid);
@@ -332,8 +332,8 @@ public function store(Request $request)
         DB::commit();
 
         // 🔔 SEND PUSH NOTIFICATION AFTER COMMIT
-        app(PushNotificationService::class)
-            ->sendOrderCreated($order);
+        // app(PushNotificationService::class)
+        //     ->sendOrderCreated($order);
 
             // 🔔 SEND PUSH TO STORE OWNER
        app(PushNotificationService::class)
