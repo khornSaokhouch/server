@@ -149,7 +149,7 @@ class PushNotificationService
         $this->sendToTokens(
             $tokens,
             'New Order Received',
-            "You have a new order #{$order->id}",
+            "You have a new order #{$order->id} from your shop {$order->shop->name}.",
             [
                 'type'     => 'new_order',
                 'order_id' => (string)$order->id,
